@@ -1,0 +1,37 @@
+{
+  "name": "menu-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:mobile": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "mobile:sync": "npm run build:mobile && npx cap sync",
+    "mobile:android": "npm run mobile:sync && npx cap open android",
+    "mobile:ios": "npm run mobile:sync && npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/ios": "^7.4.3",
+    "@tailwindcss/postcss": "^4.1.12",
+    "@types/react-transition-group": "^4.4.12",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-transition-group": "^4.4.5",
+    "tailwindcss": "^4.1.12",
+    "zustand": "^5.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "typescript": "latest"
+  }
+}
