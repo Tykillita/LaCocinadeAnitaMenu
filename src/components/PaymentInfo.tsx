@@ -35,6 +35,10 @@ const PaymentInfo: React.FC = () => {
    */
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   /**
+   * Ref to store the window object opened for WhatsApp, allowing deferred navigation.
+   */
+  const [whatsappWindow, setWhatsappWindow] = useState<Window | null>(null);
+  /**
    * State to control the visibility of the animated popup notification.
    */
   const [showPopup, setShowPopup] = useState(false);
@@ -222,19 +226,6 @@ const PaymentInfo: React.FC = () => {
   };
 
   /**
-   * Constructs and opens a WhatsApp chat with the generated order message.
-   * Uses a temporary anchor element to trigger the navigation.
-   */
-  const sendToWhatsApp = () => {
-    const message = generateWhatsAppMessage();
-    const phoneNumber = '50768257958'; // Pre-defined WhatsApp business number
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappAppURL = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-
-    window.open(whatsappAppURL, '_blank', 'noopener,noreferrer');
-  };
-
-  /**
    * Handles the submission of the order.
    * Performs validation, displays animated notifications, sends the order via WhatsApp,
    * clears the order, and navigates back to the welcome screen.
@@ -249,7 +240,21 @@ const PaymentInfo: React.FC = () => {
       return;
     }
 
+    let openedWindow: Window | null = null;
     try {
+      // Attempt to open a blank window immediately to bypass pop-up blockers
+      openedWindow = window.open('', '_blank', 'noopener,noreferrer');
+      if (openedWindow) {
+        setWhatsappWindow(openedWindow);
+      } else {
+        // Fallback if window.open is blocked (unlikely if triggered by user event)
+        await showNotificationPremium('No se pudo abrir WhatsApp. Por favor, permite las ventanas emergentes.', 'error');
+        setTimeout(async () => {
+          await hideNotificationPremium();
+        }, 4000);
+        return;
+      }
+
       // Display loading notifications with animations
       await showNotificationPremium('¡Perfecto! Validando tu pedido...', 'loading');
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -260,8 +265,21 @@ const PaymentInfo: React.FC = () => {
       await updateNotificationMessage('✅ ¡Pedido listo! Abriendo WhatsApp...', 'success');
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // After animations, trigger WhatsApp
-      sendToWhatsApp();
+      // Generate WhatsApp message and navigate the pre-opened window
+      const message = generateWhatsAppMessage();
+      const phoneNumber = '50768257958'; // Pre-defined WhatsApp business number
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappAppURL = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+
+      if (whatsappWindow) {
+        whatsappWindow.location.href = whatsappAppURL;
+      } else if (openedWindow) {
+        // Fallback in case whatsappWindow state update is not immediate
+        openedWindow.location.href = whatsappAppURL;
+      } else {
+        // If for some reason no window was opened, try a direct open as a last resort
+        window.open(whatsappAppURL, '_blank', 'noopener,noreferrer');
+      }
       
       await updateNotificationMessage('🎉 ¡Pedido enviado exitosamente!', 'success');
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -280,6 +298,11 @@ const PaymentInfo: React.FC = () => {
       setTimeout(async () => {
         await hideNotificationPremium();
       }, 4000);
+      if (openedWindow) {
+        openedWindow.close(); // Close the blank window if an error occurs
+      }
+    } finally {
+      setWhatsappWindow(null); // Clear the window reference
     }
   };
 
