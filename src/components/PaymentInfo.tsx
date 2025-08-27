@@ -231,15 +231,7 @@ const PaymentInfo: React.FC = () => {
     const encodedMessage = encodeURIComponent(message);
     const whatsappAppURL = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
 
-    // Create a temporary link element and programmatically click it to open WhatsApp
-    const link = document.createElement('a');
-    link.href = whatsappAppURL;
-    link.target = '_blank'; // Open in a new tab
-    link.rel = 'noopener noreferrer'; // Security best practice
-    link.style.display = 'none'; // Hide the link element
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link); // Clean up the temporary link
+    window.open(whatsappAppURL, '_blank', 'noopener,noreferrer');
   };
 
   /**
