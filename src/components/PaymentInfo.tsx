@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import { CreditCardIcon, WhatsAppIcon, InstagramIcon } from '@/components/ui/Icons';
 
@@ -34,10 +34,6 @@ const PaymentInfo: React.FC = () => {
    * State for the payment method selected by the customer.
    */
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
-  /**
-   * Ref to store the window object opened for WhatsApp, allowing deferred navigation.
-   */
-  const [whatsappWindow, setWhatsappWindow] = useState<Window | null>(null);
   /**
    * State to control the visibility of the animated popup notification.
    */
@@ -73,15 +69,6 @@ const PaymentInfo: React.FC = () => {
     img.src = "/images/La cocina de anita logo cosido 2 (sin fondo).png";
   }, []);
 
-  /**
-   * Detects if the current device is a mobile device based on the user agent.
-   * @returns {boolean} True if it's a mobile device, false otherwise.
-   */
-  const isMobileDevice = () => {
-    if (typeof window === 'undefined') return false; // Server-side rendering check
-    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-    return /android|ipad|iphone|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-  };
 
   /**
    * Destructures state and actions from the global Zustand store.
@@ -151,6 +138,14 @@ const PaymentInfo: React.FC = () => {
     
     return message;
   };
+
+  const whatsappUrl = useMemo(() => {
+    if (!customerName || !customerPhone || !customerAddress || !selectedPaymentMethod || orderItems.length === 0) {
+      return '#'; // Or a default invalid link
+    }
+    const message = generateWhatsAppMessage();
+    return `https://wa.me/50768257958?text=${encodeURIComponent(message)}`;
+  }, [customerName, customerPhone, customerAddress, selectedPaymentMethod, orderItems, specialNotes, deliveryDate, generateWhatsAppMessage]);
 
   /**
    * Forces a DOM reflow to ensure CSS animations are triggered correctly.
@@ -234,70 +229,55 @@ const PaymentInfo: React.FC = () => {
     setIsExiting(false);
     setAnimationStage(0); // Reset animation stage
   };
+/**
+ * Handles the submission of the order.
+ * Performs validation, displays animated notifications, sends the order via WhatsApp,
+ * clears the order, and navigates back to the welcome screen.
+ */
+const handleSubmitOrder = async () => {
+  if (orderItems.length === 0 || !customerName || !customerPhone || !customerAddress || !selectedPaymentMethod) {
+    // /**
+    //  * Temporarily disabled error notification
+    //  */
+    // await showNotificationPremium('Por favor, completa todos los campos obligatorios.', 'error');
+    // setTimeout(async () => {
+    //   await hideNotificationPremium();
+    // }, 3000);
+    return;
+  }
 
-  /**
-   * Handles the submission of the order.
-   * Performs validation, displays animated notifications, sends the order via WhatsApp,
-   * clears the order, and navigates back to the welcome screen.
-   */
-  const handleSubmitOrder = async () => {
-    // Validate required fields
-    if (orderItems.length === 0 || !customerName || !customerPhone || !customerAddress || !selectedPaymentMethod) {
-      await showNotificationPremium('Por favor completa todos los campos requeridos y selecciona un método de pago.', 'error');
-      setTimeout(async () => {
-        await hideNotificationPremium();
-      }, 4000);
-      return;
-    }
+  // /**
+  //  * Temporarily disabled loading animation
+  //  */
+  // await showNotificationPremium('Procesando pedido...', 'loading');
 
-    try {
+  try {
+    // The WhatsApp URL is now handled by the <a> tag's href
+    // No need to generate or open it here.
 
-      // Display loading notifications with animations
-      await showNotificationPremium('¡Perfecto! Validando tu pedido...', 'loading');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      await updateNotificationMessage('📝 Generando mensaje para WhatsApp...', 'loading');
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      await updateNotificationMessage('✅ ¡Pedido listo! Abriendo WhatsApp...', 'success');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Generate WhatsApp message and navigate the pre-opened window
-      const message = generateWhatsAppMessage();
-      const phoneNumber = '50768257958'; // Pre-defined WhatsApp business number
-      const encodedMessage = encodeURIComponent(message);
-      const isMobile = isMobileDevice();
-      let whatsappURL = '';
+    // /**
+    //  * Temporarily disabled success notification
+    //  */
+    // await updateNotificationMessage('🎉 ¡Pedido enviado exitosamente!', 'success');
+    // await new Promise(resolve => setTimeout(resolve, 2000));
+    // await hideNotificationPremium();
+    // await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (isMobile) {
-        whatsappURL = `whatsapp://send?phone=${phoneNumber}&text=${encodedMessage}`;
-      } else {
-        whatsappURL = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-      }
+    clearOrder();
+    setCurrentScreen('welcome');
 
-      window.open(whatsappURL, '_blank', 'noopener,noreferrer');
-      
-      await updateNotificationMessage('🎉 ¡Pedido enviado exitosamente!', 'success');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      await hideNotificationPremium();
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Clear the order and navigate to the welcome screen
-      clearOrder();
-      setCurrentScreen('welcome');
-      
-    } catch (error) {
-      console.error('Error al enviar el pedido:', error);
-      await showNotificationPremium('❌ Error al enviar el pedido. Intenta de nuevo.', 'error');
-      
-      setTimeout(async () => {
-        await hideNotificationPremium();
-      }, 4000);
-    } finally {
-      // No blank window to close or reference to clear
-    }
-  };
+  } catch (error) {
+    console.error('Error al enviar el pedido:', error);
+    // /**
+    //  * Temporarily disabled error notification
+    //  */
+    // await showNotificationPremium('❌ Error al enviar el pedido. Intenta de nuevo.', 'error');
+    // setTimeout(async () => {
+    //   await hideNotificationPremium();
+    // }, 4000);
+  }
+};
+
 
   return (
     <div className="container">
@@ -474,7 +454,7 @@ const PaymentInfo: React.FC = () => {
                 <span>@lacocinadeanita507</span>
               </a>
               <a
-                href={isMobileDevice() ? `whatsapp://send?phone=50768257958` : `https://wa.me/50768257958`}
+                href={`https://wa.me/50768257958`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="contact-item"
@@ -492,20 +472,30 @@ const PaymentInfo: React.FC = () => {
           <button className="btn btn-secondary text-white py-1 px-2 rounded-xl text-sm" onClick={handleBackToOrder}>
             ← Volver
           </button>
-          <button
-            className="btn py-1 px-2 text-sm"
-            onClick={handleSubmitOrder}
-            disabled={
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`btn py-1 px-2 text-sm ${
               orderItems.length === 0 ||
               !customerName ||
               !customerPhone ||
               !customerAddress ||
-              !selectedPaymentMethod ||
-              showPopup
+              !selectedPaymentMethod
+                ? 'btn-disabled' // Add a disabled-like class for styling
+                : ''
+            }`}
+            onClick={handleSubmitOrder} // This will now only clear the order and navigate
+            aria-disabled={
+              orderItems.length === 0 ||
+              !customerName ||
+              !customerPhone ||
+              !customerAddress ||
+              !selectedPaymentMethod
             }
           >
-            {showPopup ? '⏳ Procesando...' : '📱 Enviar Pedido →'}
-          </button>
+            📱 Enviar Pedido →
+          </a>
         </div>
       </div>
 
