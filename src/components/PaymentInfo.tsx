@@ -234,48 +234,21 @@ const PaymentInfo: React.FC = () => {
  * Performs validation, displays animated notifications, sends the order via WhatsApp,
  * clears the order, and navigates back to the welcome screen.
  */
-const handleSubmitOrder = async () => {
-  if (orderItems.length === 0 || !customerName || !customerPhone || !customerAddress || !selectedPaymentMethod) {
-    // /**
-    //  * Temporarily disabled error notification
-    //  */
-    // await showNotificationPremium('Por favor, completa todos los campos obligatorios.', 'error');
-    // setTimeout(async () => {
-    //   await hideNotificationPremium();
-    // }, 3000);
-    return;
-  }
+const handleOrderAndNavigate = async (event: React.MouseEvent<HTMLAnchorElement>) => {
+  // The href will open WhatsApp. We just need to handle the post-WhatsApp actions.
+  // Optionally, show a temporary message like "Abriendo WhatsApp..."
+  // await showNotificationPremium('Abriendo WhatsApp...', 'loading');
 
-  // /**
-  //  * Temporarily disabled loading animation
-  //  */
-  // await showNotificationPremium('Procesando pedido...', 'loading');
+  // Wait for a few seconds to allow WhatsApp to open and user to interact
+  await new Promise(resolve => setTimeout(resolve, 3000)); // 3 seconds delay
 
-  try {
-    // The WhatsApp URL is now handled by the <a> tag's href
-    // No need to generate or open it here.
+  // Then, clear the order and navigate
+  handleSubmitOrder();
+};
 
-    // /**
-    //  * Temporarily disabled success notification
-    //  */
-    // await updateNotificationMessage('🎉 ¡Pedido enviado exitosamente!', 'success');
-    // await new Promise(resolve => setTimeout(resolve, 2000));
-    // await hideNotificationPremium();
-    // await new Promise(resolve => setTimeout(resolve, 500));
-
-    clearOrder();
-    setCurrentScreen('welcome');
-
-  } catch (error) {
-    console.error('Error al enviar el pedido:', error);
-    // /**
-    //  * Temporarily disabled error notification
-    //  */
-    // await showNotificationPremium('❌ Error al enviar el pedido. Intenta de nuevo.', 'error');
-    // setTimeout(async () => {
-    //   await hideNotificationPremium();
-    // }, 4000);
-  }
+const handleSubmitOrder = () => {
+  clearOrder();
+  setCurrentScreen('welcome');
 };
 
 
@@ -485,7 +458,7 @@ const handleSubmitOrder = async () => {
                 ? 'btn-disabled' // Add a disabled-like class for styling
                 : ''
             }`}
-            onClick={handleSubmitOrder} // This will now only clear the order and navigate
+            onClick={handleOrderAndNavigate} // Call the new handler
             aria-disabled={
               orderItems.length === 0 ||
               !customerName ||
