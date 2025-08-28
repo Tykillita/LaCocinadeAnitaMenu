@@ -74,6 +74,16 @@ const PaymentInfo: React.FC = () => {
   }, []);
 
   /**
+   * Detects if the current device is a mobile device based on the user agent.
+   * @returns {boolean} True if it's a mobile device, false otherwise.
+   */
+  const isMobileDevice = () => {
+    if (typeof window === 'undefined') return false; // Server-side rendering check
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    return /android|ipad|iphone|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+  };
+
+  /**
    * Destructures state and actions from the global Zustand store.
    * `orderItems`: The list of items currently in the order.
    * `setCurrentScreen`: Function to change the active screen in the application.
@@ -240,20 +250,7 @@ const PaymentInfo: React.FC = () => {
       return;
     }
 
-    let openedWindow: Window | null = null;
     try {
-      // Attempt to open a blank window immediately to bypass pop-up blockers
-      openedWindow = window.open('', '_blank', 'noopener,noreferrer');
-      if (openedWindow) {
-        setWhatsappWindow(openedWindow);
-      } else {
-        // Fallback if window.open is blocked (unlikely if triggered by user event)
-        await showNotificationPremium('No se pudo abrir WhatsApp. Por favor, permite las ventanas emergentes.', 'error');
-        setTimeout(async () => {
-          await hideNotificationPremium();
-        }, 4000);
-        return;
-      }
 
       // Display loading notifications with animations
       await showNotificationPremium('¡Perfecto! Validando tu pedido...', 'loading');
@@ -269,17 +266,16 @@ const PaymentInfo: React.FC = () => {
       const message = generateWhatsAppMessage();
       const phoneNumber = '50768257958'; // Pre-defined WhatsApp business number
       const encodedMessage = encodeURIComponent(message);
-      const whatsappAppURL = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+      const isMobile = isMobileDevice();
+      let whatsappURL = '';
 
-      if (whatsappWindow) {
-        whatsappWindow.location.href = whatsappAppURL;
-      } else if (openedWindow) {
-        // Fallback in case whatsappWindow state update is not immediate
-        openedWindow.location.href = whatsappAppURL;
+      if (isMobile) {
+        whatsappURL = `whatsapp://send?phone=${phoneNumber}&text=${encodedMessage}`;
       } else {
-        // If for some reason no window was opened, try a direct open as a last resort
-        window.open(whatsappAppURL, '_blank', 'noopener,noreferrer');
+        whatsappURL = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
       }
+
+      window.open(whatsappURL, '_blank', 'noopener,noreferrer');
       
       await updateNotificationMessage('🎉 ¡Pedido enviado exitosamente!', 'success');
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -298,11 +294,8 @@ const PaymentInfo: React.FC = () => {
       setTimeout(async () => {
         await hideNotificationPremium();
       }, 4000);
-      if (openedWindow) {
-        openedWindow.close(); // Close the blank window if an error occurs
-      }
     } finally {
-      setWhatsappWindow(null); // Clear the window reference
+      // No blank window to close or reference to clear
     }
   };
 
@@ -481,7 +474,7 @@ const PaymentInfo: React.FC = () => {
                 <span>@lacocinadeanita507</span>
               </a>
               <a
-                href="https://wa.me/50768257958"
+                href={isMobileDevice() ? `whatsapp://send?phone=50768257958` : `https://wa.me/50768257958`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="contact-item"
