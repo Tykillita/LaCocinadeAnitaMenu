@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.56.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/react-transition-group": "^4.4.12",
     "@vercel/analytics": "^1.5.0",

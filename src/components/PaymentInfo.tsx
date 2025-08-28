@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import { CreditCardIcon, WhatsAppIcon, InstagramIcon } from '@/components/ui/Icons';
+import { useOrderListener } from '../hooks/useOrderListener';
 
 /**
  * PaymentInfo component handles the customer's information, delivery details,
@@ -10,53 +11,17 @@ import { CreditCardIcon, WhatsAppIcon, InstagramIcon } from '@/components/ui/Ico
  * It also includes a dynamic notification system for user feedback.
  */
 const PaymentInfo: React.FC = () => {
-  /**
-   * State for the customer's full name.
-   */
   const [customerName, setCustomerName] = useState('');
-  /**
-   * State for the customer's phone number.
-   */
   const [customerPhone, setCustomerPhone] = useState('');
-  /**
-   * State for the customer's delivery address.
-   */
   const [customerAddress, setCustomerAddress] = useState('');
-  /**
-   * State for any special notes or instructions from the customer.
-   */
   const [specialNotes, setSpecialNotes] = useState('');
-  /**
-   * State for the requested delivery date and time.
-   */
   const [deliveryDate, setDeliveryDate] = useState('');
-  /**
-   * State for the payment method selected by the customer.
-   */
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
-  /**
-   * State to control the visibility of the animated popup notification.
-   */
   const [showPopup, setShowPopup] = useState(false);
-  /**
-   * State to store the message displayed within the popup notification.
-   */
   const [popupMessage, setPopupMessage] = useState('');
-  /**
-   * State to determine the type (success, error, loading) and styling of the popup.
-   */
   const [popupType, setPopupType] = useState<'success' | 'error' | 'loading'>('success');
-  /**
-   * State to manage the exit animation of the popup.
-   */
   const [isExiting, setIsExiting] = useState(false);
-  /**
-   * State to control different stages of the popup's animation.
-   */
   const [animationStage, setAnimationStage] = useState(0);
-  /**
-   * State to track if the menu logo image has finished loading.
-   */
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
 
   /**
@@ -78,6 +43,37 @@ const PaymentInfo: React.FC = () => {
    * `getOrderTotal`: Function to calculate the total price of all items in the order.
    */
   const { orderItems, setCurrentScreen, clearOrder, getOrderTotal } = useStore();
+
+  // Inicializar el listener automáticamente
+  const { dispatchOrder } = useOrderListener();
+
+  // 3. AGREGAR LISTENER para eventos de guardado exitoso:
+  useEffect(() => {
+    const handleOrderSaved = (event: CustomEvent) => {
+      const { success, error, order } = event.detail;
+      
+      if (success) {
+        // Pedido guardado exitosamente
+        console.log('🎉 Pedido guardado con ID:', order.id);
+        
+        // Limpiar formulario y navegar después de un delay
+        setTimeout(() => {
+          clearOrder();
+          setCurrentScreen('welcome');
+        }, 3000); // 3 segundos para que vea las notificaciones
+        
+      } else {
+        // Error al guardar - el usuario ya ve la notificación del listener
+        console.error('💥 Error guardando pedido:', error);
+      }
+    };
+
+    window.addEventListener('orderSaved', handleOrderSaved as EventListener);
+    
+    return () => {
+      window.removeEventListener('orderSaved', handleOrderSaved as EventListener);
+    };
+  }, [clearOrder, setCurrentScreen]);
 
   /**
    * Handles navigating back to the 'order' screen.
@@ -235,21 +231,33 @@ const PaymentInfo: React.FC = () => {
  * clears the order, and navigates back to the welcome screen.
  */
 const handleOrderAndNavigate = async (event: React.MouseEvent<HTMLAnchorElement>) => {
-  // The href will open WhatsApp. We just need to handle the post-WhatsApp actions.
-  // Optionally, show a temporary message like "Abriendo WhatsApp..."
-  // await showNotificationPremium('Abriendo WhatsApp...', 'loading');
+    // Preparar datos del pedido
+    const orderData = {
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      customer_address: customerAddress,
+      delivery_date: deliveryDate || undefined,
+      payment_method: selectedPaymentMethod as 'Yappy' | 'Efectivo' | 'Transferencia' | 'Cheque',
+      special_notes: specialNotes || undefined,
+      items: orderItems.map((orderItem: any) => ({
+        item_id: orderItem.item.id,
+        item_name: orderItem.item.name,
+        quantity: orderItem.quantity,
+        unit_price: parseFloat(orderItem.item.price),
+        notes: orderItem.notes || undefined
+      }))
+    };
 
-  // Wait for a few seconds to allow WhatsApp to open and user to interact
-  await new Promise(resolve => setTimeout(resolve, 3000)); // 3 seconds delay
+    // Obtener el mensaje de WhatsApp y URL
+    const whatsappMessage = generateWhatsAppMessage();
+    const whatsappUrl = (event.target as HTMLAnchorElement).href;
 
-  // Then, clear the order and navigate
-  handleSubmitOrder();
-};
-
-const handleSubmitOrder = () => {
-  clearOrder();
-  setCurrentScreen('welcome');
-};
+    // Disparar el evento para que el listener lo capture
+    dispatchOrder(orderData, whatsappMessage, whatsappUrl);
+    
+    // El enlace de WhatsApp se abrirá automáticamente
+    // El listener se encargará de guardar los datos en segundo plano
+  };
 
 
   return (
@@ -449,7 +457,7 @@ const handleSubmitOrder = () => {
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`btn py-1 px-2 text-sm ${
+            className={`btn py-1 px-2 text-sm no-underline bg-green-600 hover:bg-green-700 text-white rounded-xl ${
               orderItems.length === 0 ||
               !customerName ||
               !customerPhone ||
@@ -467,7 +475,7 @@ const handleSubmitOrder = () => {
               !selectedPaymentMethod
             }
           >
-            📱 Enviar Pedido →
+            Enviar Pedido
           </a>
         </div>
       </div>
