@@ -109,6 +109,14 @@ export const menuItems: MenuItem[] = [
     category: 'Postres',
     available: true
 },
+{
+    id: "dessert-arroz-con-leche",
+    name: "🍚 Arroz con leche",
+    description: "Postre tradicional cremoso hecho con arroz, leche y canela.",
+    price: 2.00,
+    category: "Postres",
+    available: true
+},
   /*
    * Example of a commented-out menu item.
    * This item is currently not available / is a placeholder for future additions.
